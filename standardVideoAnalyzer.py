@@ -88,6 +88,10 @@ caps = []
 keypointsList = []
 numberOfDetectedPoints = 0
 
+for root, dirs, files in os.walk(final_directory):
+    for file in files:
+        os.remove(os.path.join(root, file))
+
 for i in range(200, videoLength - 200, 4):  # lenCap-2
     progress(i, videoLength - 10, status="finished")
 
@@ -183,7 +187,7 @@ figRel, axs = plt.subplots(2)
 
 axs[0].plot(xAxisRel, yAxisRel)
 axs[0].set_title('Transversal')
-axs[0].set_ylim([-2, -4])
+# axs[0].set_ylim([-2, -4])
 axs[0].axhline(y=0, linewidth=1, color='k')
 
 axs[1].plot(xAxisRel, y1AxisRel)
