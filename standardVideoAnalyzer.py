@@ -10,12 +10,35 @@
 # 14th of April 2021: Threshold Input, Plots for Movement and Position
 
 
-# Imports
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import sys
+
+
+def confirm(prompt=None):
+    """prompts for yes or no response from the user. Returns True for yes and
+    False for no.
+
+    'resp' should be set to the default value assumed by the caller when
+    user simply types ENTER.
+    """
+
+    if prompt is None:
+        prompt = 'Confirm'
+    prompt = '%s %s/%s: ' % (prompt, 'y', 'n')
+
+    while True:
+        answer = input(prompt)
+        if answer not in ['y', 'Y', 'n', 'N']:
+            print('please enter y or n.')
+            continue
+        if answer == 'y' or answer == 'Y':
+            return True
+        if answer == 'n' or answer == 'N':
+            return False
+
 
 print("\r")
 
@@ -51,6 +74,16 @@ croppingPoints = []
 
 
 def set_up_cropping_points_by_user():
+
+    try:
+        points = np.loadtxt('croppingPoints.txt', int)
+        confirmation = confirm("Use croppings points from last time?")
+        if confirmation:
+            croppingPoints.extend(points)
+            return
+    except IOError:
+        pass
+
     _, mask = video.read(1)
     while len(croppingPoints) < 2:  # Schleifenkonstrukt, damit das Fenster automatisch schließt
 
@@ -67,6 +100,7 @@ def set_up_cropping_points_by_user():
         cv.setMouseCallback("Maske aufziehen", set_points)
         cv.waitKey(1)
     cv.destroyWindow("Maske aufziehen")
+    np.savetxt('croppingPoints.txt', croppingPoints, "%1i")
 
 
 # Einzelne Frames croppen, umwandlen und auswerten
