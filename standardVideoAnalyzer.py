@@ -40,12 +40,6 @@ params.filterByConvexity = False
 
 detector = cv.SimpleBlobDetector_create(params)
 
-caps = []
-keypointsList = []
-numberOfDetectedPoints = []
-xCoordinates = []
-yCoordinates = []
-
 # loop to load, manipulate and analyze the frames
 
 current_directory = os.getcwd()
@@ -90,6 +84,10 @@ def progress(count, total, status=''):
 
 set_up_cropping_points_by_user()
 
+caps = []
+keypointsList = []
+numberOfDetectedPoints = 0
+
 for i in range(200, videoLength - 200, 4):  # lenCap-2
     progress(i, videoLength - 10, status="finished")
 
@@ -106,9 +104,12 @@ for i in range(200, videoLength - 200, 4):  # lenCap-2
     imageKeypoints = cv.drawKeypoints(binaryImage, keypoints, np.array([]), (0, 0, 255),
                                       cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     keypoints.sort(key=lambda keypoint: pow(keypoint.pt[0], 2) + pow(keypoint.pt[1], 2))
-
     keypointsList.append(keypoints)
-    numberOfDetectedPoints.append(len(keypoints))
+
+    if i > 200 and numberOfDetectedPoints != len(keypoints):
+        raise Exception("Number of detected keypoints is not consistent. Detected {} last frame, detected {} now.".format(
+                        numberOfDetectedPoints, len(keypoints)))
+    numberOfDetectedPoints = len(keypoints)
     cv.imwrite("binary/frame%d.jpg" % i, imageKeypoints)  # save frame as JPEG file
 
     # cv.imwrite("binary/frameV%d.jpg" % i, v)
@@ -117,11 +118,14 @@ for i in range(200, videoLength - 200, 4):  # lenCap-2
 # loop for getting all x coordinates for all blobs of all frames
 # xCoordinates includes a list of the x coordinates of all blobs in a frame, for all frames
 
+xCoordinates = []
+yCoordinates = []
+
 for frame in range(0, len(keypointsList)):
     xCoordinatesForFrame = []
     yCoordinatesForFrame = []
 
-    for point in range(0, numberOfDetectedPoints[frame]):
+    for point in range(0, numberOfDetectedPoints):
         keypointXCoordinates = keypointsList[frame][point].pt[0]
         xCoordinatesForFrame.append(keypointXCoordinates)
         keypointYCoordinates = keypointsList[frame][point].pt[1]
