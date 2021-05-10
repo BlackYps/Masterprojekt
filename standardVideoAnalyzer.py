@@ -40,6 +40,10 @@ def confirm(prompt=None):
             return False
 
 
+def distance(keypoint, origin):
+    return pow(keypoint.pt[0] - origin[0], 2) + pow(keypoint.pt[1] - origin[1], 2)
+
+
 print("\r")
 
 print("Please set a Threshold Value between 0 and 255: ")
@@ -70,11 +74,8 @@ final_directory = os.path.join(current_directory, r'binary')
 if not os.path.exists(final_directory):
     os.makedirs(final_directory)
 
-croppingPoints = []
-
 
 def set_up_cropping_points_by_user():
-
     try:
         points = np.loadtxt('croppingPoints.txt', int)
         confirmation = confirm("Use croppings points from last time?")
@@ -84,23 +85,47 @@ def set_up_cropping_points_by_user():
     except IOError:
         pass
 
+    def set_croppingpoints(event, x, y, flags, params):  # Erfasst Druecken und Loslassen, um Kasten aufzuziehen
+        if event == cv.EVENT_LBUTTONDOWN:
+            croppingPoints.append((x, y))
+
+        if event == cv.EVENT_LBUTTONUP:
+            croppingPoints.append((x, y))
+
     _, mask = video.read(1)
     while len(croppingPoints) < 2:  # Schleifenkonstrukt, damit das Fenster automatisch schließt
-
-        def set_points(event, x, y, flags, params):  # Erfasst Druecken und Loslassen, um Kasten aufzuziehen
-            if event == cv.EVENT_LBUTTONDOWN:
-                croppingPoints.append((x, y))
-
-            if event == cv.EVENT_LBUTTONUP:
-                croppingPoints.append((x, y))
-
         cv.imshow("Maske aufziehen", mask)
-
         cv.moveWindow("Maske aufziehen", 100, 20)
-        cv.setMouseCallback("Maske aufziehen", set_points)
+        cv.setMouseCallback("Maske aufziehen", set_croppingpoints)
         cv.waitKey(1)
     cv.destroyWindow("Maske aufziehen")
     np.savetxt('croppingPoints.txt', croppingPoints, "%1i")
+
+
+def set_up_origin_by_user():
+    try:
+        points = np.loadtxt('origin.txt', int)
+        confirmation = confirm("Use origin from last time? Caution! Origin is relative to cropped area.")
+        if confirmation:
+            origin.extend(points)
+            return
+    except IOError:
+        pass
+
+    def set_origin(event, x, y, flags, params):
+        if event == cv.EVENT_LBUTTONDOWN:
+            origin.extend([x, y])
+
+    _, mask = video.read(1)
+    while len(origin) < 1:
+        cv.imshow("Punkt fuer Sortierung nach Abstand festlegen", mask)
+        cv.moveWindow("Punkt fuer Sortierung nach Abstand festlegen", 100, 20)
+        cv.setMouseCallback("Punkt fuer Sortierung nach Abstand festlegen", set_origin)
+        cv.waitKey(1)
+    cv.destroyWindow("Punkt fuer Sortierung nach Abstand festlegen")
+    origin[0] -= croppingPoints[0][0]
+    origin[1] -= croppingPoints[0][1]
+    np.savetxt('origin.txt', origin, "%1i")
 
 
 # Einzelne Frames croppen, umwandlen und auswerten
@@ -116,7 +141,11 @@ def progress(count, total, status=''):
     sys.stdout.flush()
 
 
+croppingPoints = []
+origin = []
+
 set_up_cropping_points_by_user()
+set_up_origin_by_user()
 
 caps = []
 keypointsList = []
@@ -141,7 +170,7 @@ for i in range(200, videoLength - 200, 4):  # lenCap-2
     keypoints = detector.detect(binaryImage)
     imageKeypoints = cv.drawKeypoints(binaryImage, keypoints, np.array([]), (0, 0, 255),
                                       cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    keypoints.sort(key=lambda keypoint: pow(keypoint.pt[0], 2) + pow(keypoint.pt[1], 2))
+    keypoints.sort(key=lambda keypoint: distance(keypoint, origin))
     keypointsList.append(keypoints)
 
     if i > 200 and numberOfDetectedPoints != len(keypoints):
