@@ -171,6 +171,9 @@ for i in range(200, videoLength - 200, 4):  # lenCap-2
     imageKeypoints = cv.drawKeypoints(binaryImage, keypoints, np.array([]), (0, 0, 255),
                                       cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     keypoints.sort(key=lambda keypoint: distance(keypoint, origin))
+    for index, point in enumerate(keypoints):
+        color = (max(255 - (index * 30), 0), min(index * 30, 255), 0)
+        cv.line(imageKeypoints, tuple(map(int, point.pt)), tuple(map(int, keypoints[max(index-1, 0)].pt)), color, 2)
     keypointsList.append(keypoints)
 
     if i > 200 and numberOfDetectedPoints != len(keypoints):
