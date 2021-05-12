@@ -67,8 +67,6 @@ params.filterByConvexity = False
 
 detector = cv.SimpleBlobDetector_create(params)
 
-# loop to load, manipulate and analyze the frames
-
 current_directory = os.getcwd()
 final_directory = os.path.join(current_directory, r'binary')
 if not os.path.exists(final_directory):
@@ -128,8 +126,6 @@ def set_up_origin_by_user():
     np.savetxt('origin.txt', origin, "%1i")
 
 
-# Einzelne Frames croppen, umwandlen und auswerten
-
 def progress(count, total, status=''):
     bar_len = 60
     filled_len = int(round(bar_len * count / float(total)))
@@ -162,10 +158,10 @@ for i in range(200, videoLength - 200, 4):  # lenCap-2
     success, image = video.read()
     hsvImage = cv.cvtColor(image, cv.COLOR_BGR2HSV)
     h, s, v = hsvImage[:, :, 0], hsvImage[:, :, 1], hsvImage[:, :, 2]
-    # th, binaryCap = cv.adaptiveThreshold(v, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C) #127
-    th, binaryImage = cv.threshold(v, inputThresh, 255, cv.THRESH_BINARY_INV)  # 127
+    # alternative threshold method for local separation (Inversion of binary needed):
+    # th, binaryCap = cv.adaptiveThreshold(v, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C)
+    th, binaryImage = cv.threshold(v, inputThresh, 255, cv.THRESH_BINARY_INV)
     binaryImage = binaryImage[croppingPoints[0][1]:croppingPoints[1][1], croppingPoints[0][0]:croppingPoints[1][0]]
-    caps.append(binaryImage)  # FIXME This is not getting used!?
 
     keypoints = detector.detect(binaryImage)
     imageKeypoints = cv.drawKeypoints(binaryImage, keypoints, np.array([]), (0, 0, 255),
@@ -180,10 +176,7 @@ for i in range(200, videoLength - 200, 4):  # lenCap-2
         raise Exception("Number of detected keypoints is not consistent. Detected {} last frame, detected {} now.".format(
                         numberOfDetectedPoints, len(keypoints)))
     numberOfDetectedPoints = len(keypoints)
-    cv.imwrite("binary/frame%d.jpg" % i, imageKeypoints)  # save frame as JPEG file
-
-    # cv.imwrite("binary/frameV%d.jpg" % i, v)
-    # cv.imwrite("binary/frameB%d.jpg" % i, binaryCap)
+    cv.imwrite("binary/frame%d.jpg" % i, imageKeypoints)
 
 # loop for getting all x coordinates for all blobs of all frames
 # xCoordinates includes a list of the x coordinates of all blobs in a frame, for all frames
@@ -269,5 +262,5 @@ for ax in axs.flat:
 
 plt.savefig("plot-Ver.png")
 
-# Berechnung des Poisson-Verhältnisses
-# Plotten der Poissonverhältnisse abhängig vom axialen Weg der Metamaterialien
+# TODO Berechnung des Poisson-Verhältnisses
+# TODO Plotten der Poissonverhältnisse abhängig vom axialen Weg der Metamaterialien
