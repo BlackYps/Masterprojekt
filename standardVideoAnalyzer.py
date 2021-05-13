@@ -3,7 +3,8 @@
 # Master Project Thesis Title: "Deformation capabilities of mechanical meta Materials"
 
 # Created on 13th of March 2021
-# Author: Mika León Altmann, B.Sc., m.altmann@uni-bremen.de
+# Authors: Mika León Altmann, B.Sc., m.altmann@uni-bremen.de
+#                Jonas Brill, B.Sc., jobr@uni-bremen.de
 
 # Update History
 # 13th of April 2021: Cropping, Progressbar
