@@ -137,6 +137,24 @@ def progress(count, total, status=''):
     sys.stdout.flush()
 
 
+def set_point_location_by_user():
+    try:
+        points = np.loadtxt('point_location.txt', int)
+        confirmation = confirm("Use point order from last time?")
+        if confirmation:
+            point_location = np.array(points)
+            return point_location
+    except IOError:
+        pass
+
+    prompt = "Type the location of the points in a matrix-like fashion." \
+             "E.g for three rows and two columns it could be: 0 1; 3 2; 4 5  "
+    matrix = input(prompt)
+    point_location = np.array(np.mat(matrix))
+    np.savetxt('point_location.txt', point_location, "%1i")
+    return point_location
+
+
 croppingPoints = []
 origin = []
 
@@ -177,16 +195,48 @@ for i in range(200, videoLength - 200, 4):  # lenCap-2
                         numberOfDetectedPoints, len(keypoints)))
     numberOfDetectedPoints = len(keypoints)
     cv.imwrite("binary/frame%d.jpg" % i, imageKeypoints)
+print("\r")
 
 # loop for getting all x coordinates for all blobs of all frames
 # xCoordinates includes a list of the x coordinates of all blobs in a frame, for all frames
 
 xCoordinates = []
 yCoordinates = []
+dehnungen_vertikal = []
+dehnungen_horizontal = []
+l_null_vertikal_list = []
+l_null_horizontal_list = []
 
+first_frame = cv.imread("binary/frame200.jpg")
+cv.imshow("Reihenfolge der Punkte von blau nach gruen", first_frame)
+cv.waitKey(1)
+point_location = set_point_location_by_user()
+cv.destroyWindow("Reihenfolge der Punkte von blau nach gruen")
+
+for column in point_location.transpose():
+    l_null_vertikal_list.append(keypointsList[0][column[-1]].pt[1] - keypointsList[0][column[0]].pt[1])
+for row in point_location:
+    l_null_horizontal_list.append(keypointsList[0][row[-1]].pt[0] - keypointsList[0][row[0]].pt[0])
+
+frame = 200
 for keypoints in keypointsList:
     xCoordinatesForFrame = []
     yCoordinatesForFrame = []
+    dehnung_vertikal = []
+    dehnung_horizontal = []
+    image = cv.imread("binary/frame%d.jpg" % frame)
+
+    for index, l_null_vertikal in enumerate(l_null_vertikal_list):
+        dehnung_vertikal.append((keypoints[point_location[-1][index]].pt[1] - keypoints[point_location[0][index]].pt[1] - l_null_vertikal) / l_null_vertikal)
+        # Graue Linen für vertikale Dehnung
+        cv.line(image, tuple(map(int, keypoints[point_location[-1][index]].pt)), tuple(map(int, keypoints[point_location[0][index]].pt)), (120, 120, 120), 2)
+    for index, l_null_horizontal in enumerate(l_null_horizontal_list):
+        dehnung_horizontal.append((keypoints[point_location[index][-1]].pt[0] - keypoints[point_location[index][0]].pt[0] - l_null_horizontal) / l_null_horizontal)
+        # Gelbe Linen für horizontale Dehnung
+        cv.line(image, tuple(map(int, keypoints[point_location[index][-1]].pt)), tuple(map(int, keypoints[point_location[index][0]].pt)), (0, 255, 255), 2)
+
+    cv.imwrite("binary/frame%d.jpg" % frame, image)
+    frame += 4
 
     for point in range(numberOfDetectedPoints):
         keypointXCoordinates = keypoints[point].pt[0]
@@ -196,9 +246,13 @@ for keypoints in keypointsList:
 
     xCoordinates.append(xCoordinatesForFrame)
     yCoordinates.append(yCoordinatesForFrame)
+    dehnungen_vertikal.append(dehnung_vertikal)
+    dehnungen_horizontal.append(dehnung_horizontal)
 
 np.savetxt('x-Coordinates.txt', xCoordinates)
 np.savetxt('y-Coordinates.txt', yCoordinates)
+np.savetxt('dehnungen_vertikal.txt', dehnungen_vertikal)
+np.savetxt('dehnungen_horizontal.txt', dehnungen_horizontal)
 
 # Plot the x and y Coordinates of each blob over the Frames
 
