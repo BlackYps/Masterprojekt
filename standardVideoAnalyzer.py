@@ -313,6 +313,22 @@ def plot_dehnungen(frame_number, dehnungen_vertikal, dehnungen_horizontal):
     plt.savefig("plot-Dehnung.png")
 
 
+def plot_poisson(frame_number, dehnungen_vertikal, dehnungen_horizontal):
+    poisson = (-1) * np.array(dehnungen_horizontal) / np.array(dehnungen_vertikal)
+    xAxis = frame_number
+    yAxis = poisson
+
+    fig, ax = plt.subplots()
+    ax.plot(xAxis, yAxis)
+    ax.set_ylim([-1, 1])
+    ax.set_title('Querkontraktionszahl')
+    ax.set(xlabel='Frames', ylabel='Querkontraktionszahl')
+    ax.label_outer()
+    ax.axhline(y=0, linewidth=1, color='k')
+
+    plt.savefig("plot-Poisson.png")
+
+
 def main():
     print("\r")
     print("Please set a Threshold Value between 0 and 255: ")
@@ -339,9 +355,7 @@ def main():
     plot_positions(frame_number, xCoordinates, yCoordinates)
     plot_movement(frame_number, xCoordinates, yCoordinates)
     plot_dehnungen(frame_number, dehnungen_vertikal, dehnungen_horizontal)
+    plot_poisson(frame_number, dehnungen_vertikal, dehnungen_horizontal)
 
 
 main()
-
-# TODO Berechnung des Poisson-Verhältnisses
-# TODO Plotten der Poissonverhältnisse abhängig vom axialen Weg der Metamaterialien
