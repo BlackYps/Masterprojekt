@@ -44,42 +44,14 @@ def distance(keypoint, origin):
     return pow(keypoint.pt[0] - origin[0], 2) + pow(keypoint.pt[1] - origin[1], 2)
 
 
-print("\r")
-
-print("Please set a Threshold Value between 0 and 255: ")
-inputThresh = int(input())
-
-print("\r")
-
-# load video file and get number of frames
-video = cv.VideoCapture('video.avi')
-videoLength = int(video.get(cv.CAP_PROP_FRAME_COUNT))
-
-# Set up Detector for Blob Detection
-
-params = cv.SimpleBlobDetector_Params()
-
-params.filterByColor = True
-params.blobColor = 0
-params.filterByArea = True
-params.filterByInertia = False
-params.filterByConvexity = False
-
-detector = cv.SimpleBlobDetector_create(params)
-
-current_directory = os.getcwd()
-final_directory = os.path.join(current_directory, r'binary')
-if not os.path.exists(final_directory):
-    os.makedirs(final_directory)
-
-
-def set_up_cropping_points_by_user():
+def set_up_cropping_points_by_user(video):
+    croppingPoints = []
     try:
         points = np.loadtxt('croppingPoints.txt', int)
         confirmation = confirm("Use croppings points from last time?")
         if confirmation:
             croppingPoints.extend(points)
-            return
+            return croppingPoints
     except IOError:
         pass
 
@@ -98,15 +70,17 @@ def set_up_cropping_points_by_user():
         cv.waitKey(1)
     cv.destroyWindow("Maske aufziehen")
     np.savetxt('croppingPoints.txt', croppingPoints, "%1i")
+    return croppingPoints
 
 
-def set_up_origin_by_user():
+def set_up_origin_by_user(video, croppingPoints):
+    origin = []
     try:
         points = np.loadtxt('origin.txt', int)
         confirmation = confirm("Use origin from last time? Caution! Origin is relative to cropped area.")
         if confirmation:
             origin.extend(points)
-            return
+            return origin
     except IOError:
         pass
 
@@ -124,6 +98,7 @@ def set_up_origin_by_user():
     origin[0] -= croppingPoints[0][0]
     origin[1] -= croppingPoints[0][1]
     np.savetxt('origin.txt', origin, "%1i")
+    return origin
 
 
 def progress(count, total, status=''):
@@ -155,166 +130,198 @@ def set_point_location_by_user():
     return point_location
 
 
-croppingPoints = []
-origin = []
+def set_up_detector_for_blob_detection():
+    params = cv.SimpleBlobDetector_Params()
+    params.filterByColor = True
+    params.blobColor = 0
+    params.filterByArea = True
+    params.filterByInertia = False
+    params.filterByConvexity = False
+    return cv.SimpleBlobDetector_create(params)
 
-set_up_cropping_points_by_user()
-set_up_origin_by_user()
 
-caps = []
-keypointsList = []
-numberOfDetectedPoints = 0
+def detect_keypoints(final_directory, video, croppingPoints, origin, detector, inputThresh):
+    videoLength = int(video.get(cv.CAP_PROP_FRAME_COUNT))
+    keypointsList = []
+    numberOfDetectedPoints = 0
 
-for root, dirs, files in os.walk(final_directory):
-    for file in files:
-        os.remove(os.path.join(root, file))
+    for root, dirs, files in os.walk(final_directory):
+        for file in files:
+            os.remove(os.path.join(root, file))
 
-for i in range(200, videoLength - 200, 4):  # lenCap-2
-    progress(i, videoLength - 10, status="finished")
+    for i in range(200, videoLength - 200, 4):  # lenCap-2
+        progress(i, videoLength - 10, status="finished")
 
-    # load first frame, convert into HSV room, thresholding the v plane and save binary in caps array
-    success, image = video.read()
-    hsvImage = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-    h, s, v = hsvImage[:, :, 0], hsvImage[:, :, 1], hsvImage[:, :, 2]
-    # alternative threshold method for local separation (Inversion of binary needed):
-    # th, binaryCap = cv.adaptiveThreshold(v, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C)
-    th, binaryImage = cv.threshold(v, inputThresh, 255, cv.THRESH_BINARY_INV)
-    binaryImage = binaryImage[croppingPoints[0][1]:croppingPoints[1][1], croppingPoints[0][0]:croppingPoints[1][0]]
+        # load first frame, convert into HSV room, thresholding the v plane and save binary in caps array
+        success, image = video.read()
+        hsvImage = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+        h, s, v = hsvImage[:, :, 0], hsvImage[:, :, 1], hsvImage[:, :, 2]
+        # alternative threshold method for local separation (Inversion of binary needed):
+        # th, binaryCap = cv.adaptiveThreshold(v, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C)
+        th, binaryImage = cv.threshold(v, inputThresh, 255, cv.THRESH_BINARY_INV)
+        binaryImage = binaryImage[croppingPoints[0][1]:croppingPoints[1][1], croppingPoints[0][0]:croppingPoints[1][0]]
 
-    keypoints = detector.detect(binaryImage)
-    imageKeypoints = cv.drawKeypoints(binaryImage, keypoints, np.array([]), (0, 0, 255),
-                                      cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    keypoints.sort(key=lambda keypoint: distance(keypoint, origin))
-    for index, point in enumerate(keypoints):
-        color = (max(255 - (index * 30), 0), min(index * 30, 255), 0)
-        cv.line(imageKeypoints, tuple(map(int, point.pt)), tuple(map(int, keypoints[max(index-1, 0)].pt)), color, 2)
-    keypointsList.append(keypoints)
+        keypoints = detector.detect(binaryImage)
+        imageKeypoints = cv.drawKeypoints(binaryImage, keypoints, np.array([]), (0, 0, 255),
+                                          cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        keypoints.sort(key=lambda keypoint: distance(keypoint, origin))
+        for index, point in enumerate(keypoints):
+            color = (max(255 - (index * 30), 0), min(index * 30, 255), 0)
+            cv.line(imageKeypoints, tuple(map(int, point.pt)), tuple(map(int, keypoints[max(index - 1, 0)].pt)), color,
+                    2)
+        keypointsList.append(keypoints)
 
-    if i > 200 and numberOfDetectedPoints != len(keypoints):
-        raise Exception("Number of detected keypoints is not consistent. Detected {} last frame, detected {} now.".format(
-                        numberOfDetectedPoints, len(keypoints)))
-    numberOfDetectedPoints = len(keypoints)
-    cv.imwrite("binary/frame%d.jpg" % i, imageKeypoints)
-print("\r")
+        if i > 200 and numberOfDetectedPoints != len(keypoints):
+            raise Exception(
+                "Number of detected keypoints is not consistent. Detected {} last frame, detected {} now.".format(
+                    numberOfDetectedPoints, len(keypoints)))
+        numberOfDetectedPoints = len(keypoints)
+        cv.imwrite("binary/frame%d.jpg" % i, imageKeypoints)
+    print("\r")
+    return keypointsList
 
-# loop for getting all x coordinates for all blobs of all frames
-# xCoordinates includes a list of the x coordinates of all blobs in a frame, for all frames
 
-xCoordinates = []
-yCoordinates = []
-dehnungen_vertikal = []
-dehnungen_horizontal = []
-l_null_vertikal_list = []
-l_null_horizontal_list = []
+def write_coordinates_and_dehnungen(keypointsList):
+    xCoordinates = []
+    yCoordinates = []
+    dehnungen_vertikal = []
+    dehnungen_horizontal = []
+    l_null_vertikal_list = []
+    l_null_horizontal_list = []
 
-first_frame = cv.imread("binary/frame200.jpg")
-cv.imshow("Reihenfolge der Punkte von blau nach gruen", first_frame)
-cv.waitKey(1)
-point_location = set_point_location_by_user()
-cv.destroyWindow("Reihenfolge der Punkte von blau nach gruen")
+    first_frame = cv.imread("binary/frame200.jpg")
+    cv.imshow("Reihenfolge der Punkte von blau nach gruen", first_frame)
+    cv.waitKey(1)
+    point_location = set_point_location_by_user()
+    cv.destroyWindow("Reihenfolge der Punkte von blau nach gruen")
 
-for column in point_location.transpose():
-    l_null_vertikal_list.append(keypointsList[0][column[-1]].pt[1] - keypointsList[0][column[0]].pt[1])
-for row in point_location:
-    l_null_horizontal_list.append(keypointsList[0][row[-1]].pt[0] - keypointsList[0][row[0]].pt[0])
+    for column in point_location.transpose():
+        l_null_vertikal_list.append(keypointsList[0][column[-1]].pt[1] - keypointsList[0][column[0]].pt[1])
+    for row in point_location:
+        l_null_horizontal_list.append(keypointsList[0][row[-1]].pt[0] - keypointsList[0][row[0]].pt[0])
 
-frame = 200
-for keypoints in keypointsList:
-    xCoordinatesForFrame = []
-    yCoordinatesForFrame = []
-    dehnung_vertikal = []
-    dehnung_horizontal = []
-    image = cv.imread("binary/frame%d.jpg" % frame)
+    frame = 200
+    for keypoints in keypointsList:
+        xCoordinatesForFrame = []
+        yCoordinatesForFrame = []
+        dehnung_vertikal = []
+        dehnung_horizontal = []
+        image = cv.imread("binary/frame%d.jpg" % frame)
 
-    for index, l_null_vertikal in enumerate(l_null_vertikal_list):
-        dehnung_vertikal.append((keypoints[point_location[-1][index]].pt[1] - keypoints[point_location[0][index]].pt[1] - l_null_vertikal) / l_null_vertikal)
-        # Graue Linen für vertikale Dehnung
-        cv.line(image, tuple(map(int, keypoints[point_location[-1][index]].pt)), tuple(map(int, keypoints[point_location[0][index]].pt)), (120, 120, 120), 2)
-    for index, l_null_horizontal in enumerate(l_null_horizontal_list):
-        dehnung_horizontal.append((keypoints[point_location[index][-1]].pt[0] - keypoints[point_location[index][0]].pt[0] - l_null_horizontal) / l_null_horizontal)
-        # Gelbe Linen für horizontale Dehnung
-        cv.line(image, tuple(map(int, keypoints[point_location[index][-1]].pt)), tuple(map(int, keypoints[point_location[index][0]].pt)), (0, 255, 255), 2)
+        for index, l_null_vertikal in enumerate(l_null_vertikal_list):
+            dehnung_vertikal.append((keypoints[point_location[-1][index]].pt[1] -
+                                     keypoints[point_location[0][index]].pt[1] - l_null_vertikal) / l_null_vertikal)
+            # Graue Linen für vertikale Dehnung
+            cv.line(image, tuple(map(int, keypoints[point_location[-1][index]].pt)),
+                    tuple(map(int, keypoints[point_location[0][index]].pt)), (120, 120, 120), 2)
+        for index, l_null_horizontal in enumerate(l_null_horizontal_list):
+            dehnung_horizontal.append((keypoints[point_location[index][-1]].pt[0] -
+                                       keypoints[point_location[index][0]].pt[
+                                           0] - l_null_horizontal) / l_null_horizontal)
+            # Gelbe Linen für horizontale Dehnung
+            cv.line(image, tuple(map(int, keypoints[point_location[index][-1]].pt)),
+                    tuple(map(int, keypoints[point_location[index][0]].pt)), (0, 255, 255), 2)
 
-    cv.imwrite("binary/frame%d.jpg" % frame, image)
-    frame += 4
+        cv.imwrite("binary/frame%d.jpg" % frame, image)
+        frame += 4
 
-    for point in range(numberOfDetectedPoints):
-        keypointXCoordinates = keypoints[point].pt[0]
-        xCoordinatesForFrame.append(keypointXCoordinates)
-        keypointYCoordinates = keypoints[point].pt[1]
-        yCoordinatesForFrame.append(keypointYCoordinates)
+        for point in keypoints:
+            xCoordinatesForFrame.append(point.pt[0])
+            yCoordinatesForFrame.append(point.pt[1])
 
-    xCoordinates.append(xCoordinatesForFrame)
-    yCoordinates.append(yCoordinatesForFrame)
-    dehnungen_vertikal.append(dehnung_vertikal)
-    dehnungen_horizontal.append(dehnung_horizontal)
+        xCoordinates.append(xCoordinatesForFrame)
+        yCoordinates.append(yCoordinatesForFrame)
+        dehnungen_vertikal.append(dehnung_vertikal)
+        dehnungen_horizontal.append(dehnung_horizontal)
 
-np.savetxt('x-Coordinates.txt', xCoordinates)
-np.savetxt('y-Coordinates.txt', yCoordinates)
-np.savetxt('dehnungen_vertikal.txt', dehnungen_vertikal)
-np.savetxt('dehnungen_horizontal.txt', dehnungen_horizontal)
+    np.savetxt('x-Coordinates.txt', xCoordinates)
+    np.savetxt('y-Coordinates.txt', yCoordinates)
+    np.savetxt('dehnungen_vertikal.txt', dehnungen_vertikal)
+    np.savetxt('dehnungen_horizontal.txt', dehnungen_horizontal)
+    return xCoordinates, yCoordinates
 
-# Plot the x and y Coordinates of each blob over the Frames
 
-capNumber = []  # List with increasing number for plotting
+def plot_positions(frame_number, xCoordinates, yCoordinates):
+    xAxis = frame_number
+    yAxis = xCoordinates
+    y1Axis = yCoordinates
 
-for frame in range(len(keypointsList)):
-    capNumber.append(frame + 1)
+    fig, axs = plt.subplots(2)
 
-xAxis = capNumber
-yAxis = xCoordinates
-y1Axis = yCoordinates
+    axs[0].plot(xAxis, yAxis)
+    axs[0].set_title('Transversal (0 linker Bildrand)')
 
-fig, axs = plt.subplots(2)
+    axs[1].plot(xAxis, y1Axis)
+    axs[1].set_title('Axial (0 oberer Bildrand)')
 
-axs[0].plot(xAxis, yAxis)
-axs[0].set_title('Transversal (0 linker Bildrand)')
+    for ax in axs.flat:
+        ax.set(xlabel='Frames', ylabel='Centroid Koordinate [Px]')
 
-axs[1].plot(xAxis, y1Axis)
-axs[1].set_title('Axial (0 oberer Bildrand)')
+    for ax in axs.flat:
+        ax.label_outer()
 
-for ax in axs.flat:
-    ax.set(xlabel='Frames', ylabel='Centroid Koordinate [Px]')
+    plt.savefig("plot-Pos.png")
 
-for ax in axs.flat:
-    ax.label_outer()
 
-plt.savefig("plot-Pos.png")
-# plt.show()
+def plot_movement(frame_number, xCoordinates, yCoordinates):
+    firstLineX = np.array(xCoordinates[0])
+    firstLineY = np.array(yCoordinates[0])
 
-print("\r")
+    xCoordinatesRel = np.array(xCoordinates) - firstLineX
+    yCoordinatesRel = np.array(yCoordinates) - firstLineY
+    xAxisRel = frame_number
+    yAxisRel = xCoordinatesRel
+    y1AxisRel = yCoordinatesRel
 
-# Converting Lists into Arrays and Calculating and Plotting the Movement of all Centroids
+    figRel, axs = plt.subplots(2)
 
-firstLineX = np.array(xCoordinates[0])
-firstLineY = np.array(yCoordinates[0])
+    axs[0].plot(xAxisRel, yAxisRel)
+    axs[0].set_title('Transversal')
+    # axs[0].set_ylim([-2, -4])
+    axs[0].axhline(y=0, linewidth=1, color='k')
 
-xCoordinatesRel = np.array(xCoordinates) - firstLineX
-yCoordinatesRel = np.array(yCoordinates) - firstLineY
+    axs[1].plot(xAxisRel, y1AxisRel)
+    axs[1].set_title('Axial')
+    # axs[1].set_ylim([-10,-4])
+    axs[1].axhline(y=0, linewidth=1, color='k')
 
-xAxisRel = capNumber
-yAxisRel = xCoordinatesRel
-y1AxisRel = yCoordinatesRel
+    for ax in axs.flat:
+        ax.set(xlabel='Frames', ylabel='Centroid Verschiebung [Px]')
 
-figRel, axs = plt.subplots(2)
+    for ax in axs.flat:
+        ax.label_outer()
 
-axs[0].plot(xAxisRel, yAxisRel)
-axs[0].set_title('Transversal')
-# axs[0].set_ylim([-2, -4])
-axs[0].axhline(y=0, linewidth=1, color='k')
+    plt.savefig("plot-Ver.png")
 
-axs[1].plot(xAxisRel, y1AxisRel)
-axs[1].set_title('Axial')
-# axs[1].set_ylim([-10,-4])
-axs[1].axhline(y=0, linewidth=1, color='k')
 
-for ax in axs.flat:
-    ax.set(xlabel='Frames', ylabel='Centroid Verschiebung [Px]')
+def main():
+    print("\r")
+    print("Please set a Threshold Value between 0 and 255: ")
+    inputThresh = int(input())
+    print("\r")
 
-for ax in axs.flat:
-    ax.label_outer()
+    current_directory = os.getcwd()
+    final_directory = os.path.join(current_directory, r'binary')
+    if not os.path.exists(final_directory):
+        os.makedirs(final_directory)
 
-plt.savefig("plot-Ver.png")
+    video = cv.VideoCapture('video.avi')
+    croppingPoints = set_up_cropping_points_by_user(video)
+    origin = set_up_origin_by_user(video, croppingPoints)
+    detector = set_up_detector_for_blob_detection()
+
+    keypointsList = detect_keypoints(final_directory, video, croppingPoints, origin, detector, inputThresh)
+    xCoordinates, yCoordinates = write_coordinates_and_dehnungen(keypointsList)
+
+    frame_number = []  # List with increasing number for plotting
+    for frame in range(len(keypointsList)):
+        frame_number.append(frame + 1)
+
+    plot_positions(frame_number, xCoordinates, yCoordinates)
+    plot_movement(frame_number, xCoordinates, yCoordinates)
+
+
+main()
 
 # TODO Berechnung des Poisson-Verhältnisses
 # TODO Plotten der Poissonverhältnisse abhängig vom axialen Weg der Metamaterialien
