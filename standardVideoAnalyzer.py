@@ -202,7 +202,9 @@ def write_coordinates_and_dehnungen(keypointsList):
         l_null_horizontal_list.append(keypointsList[0][row[-1]].pt[0] - keypointsList[0][row[0]].pt[0])
 
     frame = 200
+    total = len(keypointsList)
     for keypoints in keypointsList:
+        progress((frame - 200) / 4, total, status="finished")
         xCoordinatesForFrame = []
         yCoordinatesForFrame = []
         dehnung_vertikal = []
@@ -239,7 +241,7 @@ def write_coordinates_and_dehnungen(keypointsList):
     np.savetxt('y-Coordinates.txt', yCoordinates)
     np.savetxt('dehnungen_vertikal.txt', dehnungen_vertikal)
     np.savetxt('dehnungen_horizontal.txt', dehnungen_horizontal)
-    return xCoordinates, yCoordinates
+    return xCoordinates, yCoordinates, dehnungen_vertikal, dehnungen_horizontal
 
 
 def plot_positions(frame_number, xCoordinates, yCoordinates):
@@ -257,8 +259,6 @@ def plot_positions(frame_number, xCoordinates, yCoordinates):
 
     for ax in axs.flat:
         ax.set(xlabel='Frames', ylabel='Centroid Koordinate [Px]')
-
-    for ax in axs.flat:
         ax.label_outer()
 
     plt.savefig("plot-Pos.png")
@@ -279,20 +279,38 @@ def plot_movement(frame_number, xCoordinates, yCoordinates):
     axs[0].plot(xAxisRel, yAxisRel)
     axs[0].set_title('Transversal')
     # axs[0].set_ylim([-2, -4])
-    axs[0].axhline(y=0, linewidth=1, color='k')
 
     axs[1].plot(xAxisRel, y1AxisRel)
     axs[1].set_title('Axial')
     # axs[1].set_ylim([-10,-4])
-    axs[1].axhline(y=0, linewidth=1, color='k')
 
     for ax in axs.flat:
         ax.set(xlabel='Frames', ylabel='Centroid Verschiebung [Px]')
-
-    for ax in axs.flat:
         ax.label_outer()
+        ax.axhline(y=0, linewidth=1, color='k')
 
     plt.savefig("plot-Ver.png")
+
+
+def plot_dehnungen(frame_number, dehnungen_vertikal, dehnungen_horizontal):
+    xAxis = frame_number
+    yAxis = dehnungen_horizontal
+    y1Axis = dehnungen_vertikal
+
+    fig, axs = plt.subplots(2)
+
+    axs[0].plot(xAxis, yAxis)
+    axs[0].set_title('Transversale Dehnung')
+
+    axs[1].plot(xAxis, y1Axis)
+    axs[1].set_title('Axiale Dehnung')
+
+    for ax in axs.flat:
+        ax.set(xlabel='Frames', ylabel='Relative Dehnung')
+        ax.label_outer()
+        ax.axhline(y=0, linewidth=1, color='k')
+
+    plt.savefig("plot-Dehnung.png")
 
 
 def main():
@@ -312,7 +330,7 @@ def main():
     detector = set_up_detector_for_blob_detection()
 
     keypointsList = detect_keypoints(final_directory, video, croppingPoints, origin, detector, inputThresh)
-    xCoordinates, yCoordinates = write_coordinates_and_dehnungen(keypointsList)
+    xCoordinates, yCoordinates, dehnungen_vertikal, dehnungen_horizontal = write_coordinates_and_dehnungen(keypointsList)
 
     frame_number = []  # List with increasing number for plotting
     for frame in range(len(keypointsList)):
@@ -320,6 +338,7 @@ def main():
 
     plot_positions(frame_number, xCoordinates, yCoordinates)
     plot_movement(frame_number, xCoordinates, yCoordinates)
+    plot_dehnungen(frame_number, dehnungen_vertikal, dehnungen_horizontal)
 
 
 main()
