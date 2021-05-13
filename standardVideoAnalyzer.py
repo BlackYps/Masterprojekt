@@ -184,14 +184,14 @@ for i in range(200, videoLength - 200, 4):  # lenCap-2
 xCoordinates = []
 yCoordinates = []
 
-for frame in range(0, len(keypointsList)):
+for keypoints in keypointsList:
     xCoordinatesForFrame = []
     yCoordinatesForFrame = []
 
-    for point in range(0, numberOfDetectedPoints):
-        keypointXCoordinates = keypointsList[frame][point].pt[0]
+    for point in range(numberOfDetectedPoints):
+        keypointXCoordinates = keypoints[point].pt[0]
         xCoordinatesForFrame.append(keypointXCoordinates)
-        keypointYCoordinates = keypointsList[frame][point].pt[1]
+        keypointYCoordinates = keypoints[point].pt[1]
         yCoordinatesForFrame.append(keypointYCoordinates)
 
     xCoordinates.append(xCoordinatesForFrame)
@@ -204,7 +204,7 @@ np.savetxt('y-Coordinates.txt', yCoordinates)
 
 capNumber = []  # List with increasing number for plotting
 
-for frame in range(0, len(keypointsList)):
+for frame in range(len(keypointsList)):
     capNumber.append(frame + 1)
 
 xAxis = capNumber
