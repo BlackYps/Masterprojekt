@@ -124,7 +124,7 @@ def set_point_location_by_user():
         pass
 
     prompt = "Type the location of the points in a matrix-like fashion." \
-             "E.g for three rows and two columns it could be: 0 1; 3 2; 4 5  "
+             "(E.g for three rows and two columns it could be: 0 1; 3 2; 4 5).  "
     matrix = input(prompt)
     point_location = np.array(np.mat(matrix))
     np.savetxt('point_location.txt', point_location, "%1i")
@@ -150,7 +150,7 @@ def detect_keypoints(final_directory, video, croppingPoints, origin, detector, i
         for file in files:
             os.remove(os.path.join(root, file))
 
-    for i in range(200, videoLength - 200, 4):  # lenCap-2
+    for i in range(0, videoLength - 200):  # lenCap-2
         progress(i, videoLength - 10, status="finished")
 
         # load first frame, convert into HSV room, thresholding the v plane and save binary in caps array
@@ -172,7 +172,7 @@ def detect_keypoints(final_directory, video, croppingPoints, origin, detector, i
                     2)
         keypointsList.append(keypoints)
 
-        if i > 200 and numberOfDetectedPoints != len(keypoints):
+        if i > 0 and numberOfDetectedPoints != len(keypoints):
             raise Exception(
                 "Number of detected keypoints is not consistent. Detected {} last frame, detected {} now.".format(
                     numberOfDetectedPoints, len(keypoints)))
@@ -201,10 +201,10 @@ def write_coordinates_and_dehnungen(keypointsList):
     for row in point_location:
         l_null_horizontal_list.append(keypointsList[0][row[-1]].pt[0] - keypointsList[0][row[0]].pt[0])
 
-    frame = 200
+    frame = 0
     total = len(keypointsList)
     for keypoints in keypointsList:
-        progress((frame - 200) / 4, total, status="finished")
+        progress((frame - 0), total, status="finished")
         xCoordinatesForFrame = []
         yCoordinatesForFrame = []
         dehnung_vertikal = []
@@ -226,7 +226,7 @@ def write_coordinates_and_dehnungen(keypointsList):
                     tuple(map(int, keypoints[point_location[index][0]].pt)), (0, 255, 255), 2)
 
         cv.imwrite("binary/frame%d.jpg" % frame, image)
-        frame += 4
+        frame += 1
 
         for point in keypoints:
             xCoordinatesForFrame.append(point.pt[0])
