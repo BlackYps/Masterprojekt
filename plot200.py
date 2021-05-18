@@ -1,3 +1,3 @@
-from plot100 import plot_dehnungen
+from plot100 import batch_plot
 
-plot_dehnungen([-3.5, 1.5], "plot-Dehnung-200.png")
+batch_plot([-6, 2], "plot-Dehnung-200.png")
