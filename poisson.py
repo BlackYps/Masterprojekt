@@ -27,12 +27,19 @@ def plot_poisson(filename, path):
     poisson_average = np.average(right_half)
     print("poisson in right half of " + path + ": " + str(poisson_average))
 
+    font = {'family': 'sans-serif',
+            'weight': 600,
+            'size': 10,
+            }
+    plt.rcParams['axes.prop_cycle'] = plt.cycler(
+        color=['brown', 'salmon', 'orange', 'turquoise', 'lightblue', 'gold'])
+
     fig, ax = plt.subplots()
-    ax.plot(xAxis, yAxis)
-    ax.plot(xAxis, y1Axis, label='average')
+    ax.plot(xAxis, yAxis, label=['oben', 'mitte', 'unten'])
+    ax.plot(xAxis, y1Axis, label='Mittelwert')
     ax.set_ylim([-1, 1])
-    ax.set_title('Querkontraktionszahl')
-    ax.set(xlabel='Zeit (s)', ylabel='Querkontraktionszahl')
+    plt.xlabel('Zeit (s)', fontdict=font)
+    plt.ylabel('Querkontraktionszahl', fontdict=font)
     ax.legend()
     ax.label_outer()
     ax.axhline(y=0, linewidth=1, color='k')
