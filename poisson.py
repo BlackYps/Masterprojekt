@@ -27,9 +27,10 @@ def plot_poisson(filename, path):
     poisson_average = np.average(right_half)
     print("poisson in right half of " + path + ": " + str(poisson_average))
 
+    fontsize = 14  # font size for axis ticks and legend
     font = {'family': 'sans-serif',
             'weight': 600,
-            'size': 10,
+            'size': 16,
             }
     plt.rcParams['axes.prop_cycle'] = plt.cycler(
         color=['brown', 'salmon', 'orange', 'turquoise', 'lightblue', 'gold'])
@@ -40,9 +41,12 @@ def plot_poisson(filename, path):
     ax.set_ylim([-1, 1])
     plt.xlabel('Zeit (s)', fontdict=font)
     plt.ylabel('Querkontraktionszahl', fontdict=font)
-    ax.legend()
+    ax.legend(prop={"size": fontsize})
     ax.label_outer()
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
+    ax.tick_params(axis='both', which='minor', labelsize=fontsize)
     ax.axhline(y=0, linewidth=1, color='k')
+    plt.subplots_adjust(left=0.17, bottom=0.15)
 
     plt.savefig(os.path.join(path, filename))
 
