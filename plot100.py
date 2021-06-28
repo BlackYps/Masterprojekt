@@ -13,9 +13,11 @@ def plot_dehnungen(y_limit, filename, path):
     yAxis = dehnungen_horizontal * 100
     y1Axis = dehnungen_vertikal * 100
 
+    fontsize = 14   #font size for axis ticks and legend
+
     font = {'family': 'sans-serif',
             'weight': 600,
-            'size': 10,
+            'size': 16,
             }
     plt.rcParams["legend.loc"] = 'lower left'
 
@@ -44,9 +46,11 @@ def plot_dehnungen(y_limit, filename, path):
     ax.set_ylim(y_limit)
     ax.label_outer()
     ax.axhline(y=0, linewidth=1, color='k')
-    ax.legend()
+    ax.legend(prop={"size":fontsize})
     ax.margins(0.02)
     ax.set_xlim(left=0)
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
+    ax.tick_params(axis='both', which='minor', labelsize=fontsize)
     plt.xlabel('Zeit (s)', fontdict=font)
     plt.ylabel('Relative Dehnung (%)', fontdict=font)
     plt.subplots_adjust(left=0.17, right=0.95)
